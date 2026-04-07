@@ -13,6 +13,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Servir archivos estáticos (Frontend) - DEBE IR PRIMERO QUE LAS RUTAS
+app.use(express.static(path.join(__dirname)));
 
 // --- MODELOS DE DATOS (JSON) ---
 const Producto = db.Producto;
@@ -516,11 +518,11 @@ app.post('/api/delete-all-products', async (req, res) => {
 
 // --- FIN MÓDULO COMPRAS ---
 
-// Redirigir la raíz al login y servir archivos estáticos (AL FINAL!)
+// Redirigir la raíz al login
 app.get('/', (req, res) => {
     res.redirect('/login.html');
 });
-app.use(express.static(path.join(__dirname)));
+
 
 // Iniciamos el servidor
 app.listen(PORT, () => {
