@@ -1,0 +1,528 @@
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const path = require('path');
+const fs = require('fs');
+const db = require('./database');
+
+const app = express();
+const PORT = process.env.PORT || 3344;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+
+// --- MODELOS DE DATOS (JSON) ---
+const Producto = db.Producto;
+const Usuario = db.Usuario;
+const Pedido = db.Pedido;
+const Reporte = db.Reporte;
+const Ingreso = db.Ingreso;
+const Egreso = db.Egreso;
+const Config = db.Config;
+const FacturaCompra = db.FacturaCompra;
+const ProveedorCompra = db.ProveedorCompra;
+
+// --- INICIALIZACIÓN LOCAL ---
+console.log(`✅ Usando sistema de archivos JSON local`);
+
+// --- MÓDULO FACTURAS DE COMPRA (INDEPENDIENTE) ---
+app.get('/api/test-compras', (req, res) => res.json({ status: 'ok', message: 'Módulo de compras activo' }));
+
+app.get('/api/facturas-compras', async (req, res) => {
+    try {
+        const facturas = await FacturaCompra.find();
+        res.json(facturas);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener facturas de compra' });
+    }
+});
+
+app.post('/api/facturas-compras', async (req, res) => {
+    const f = req.body;
+    try {
+        if (!f.id) f.id = Date.now().toString();
+        await FacturaCompra.findOneAndUpdate({ id: f.id }, f, { upsert: true });
+        if (f.proveedor && f.nit) {
+            const nombreNormalizado = f.proveedor.trim().toUpperCase();
+            const provExistente = await ProveedorCompra.findOne({ nombre: nombreNormalizado });
+            if (!provExistente) {
+                await ProveedorCompra.findOneAndUpdate({ nombre: nombreNormalizado }, {
+                    nombre: nombreNormalizado,
+                    nit: f.nit.trim()
+                }, { upsert: true });
+            } else if (provExistente.nit !== f.nit.trim()) {
+                await ProveedorCompra.findOneAndUpdate({ nombre: nombreNormalizado }, { $set: { nit: f.nit.trim() } });
+            }
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error saving factura compra:", error);
+        res.status(500).json({ error: error.message || 'Error al guardar factura de compra' });
+    }
+});
+
+app.get('/api/provedores-compras', async (req, res) => {
+    try {
+        const proveedores = await ProveedorCompra.find();
+        res.json(proveedores);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener lista de proveedores' });
+    }
+});
+
+app.delete('/api/facturas-compras/:id', async (req, res) => {
+    try {
+        await FacturaCompra.findOneAndDelete({ id: req.params.id });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar factura de compra' });
+    }
+});
+
+app.post('/api/provedores-compras', async (req, res) => {
+    const p = req.body;
+    try {
+        // Usamos _id para consistencia con los registros autogenerados
+        if (!p._id) p._id = Date.now().toString();
+        p.nombre = p.nombre.trim().toUpperCase();
+        await ProveedorCompra.findOneAndUpdate({ nombre: p.nombre }, p, { upsert: true });
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error saving provider:", error);
+        res.status(500).json({ error: 'Error al guardar proveedor' });
+    }
+});
+
+app.delete('/api/provedores-compras/:id', async (req, res) => {
+    try {
+        // Buscamos por _id que es el campo usado en provedores_compras.json
+        await ProveedorCompra.findOneAndDelete({ _id: req.params.id });
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting provider:", error);
+        res.status(500).json({ error: 'Error al eliminar proveedor' });
+    }
+});
+// --- FIN MÓDULO COMPRAS ---
+
+// API lista.
+
+// 1. Productos - Obtener todos
+app.get('/api/productos', async (req, res) => {
+    try {
+        const productos = await Producto.find();
+        res.json(productos);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener productos' });
+    }
+});
+
+// 2. Productos - Guardar/Actualizar
+app.post('/api/productos', async (req, res) => {
+    const p = req.body;
+    try {
+        if (p._id) {
+            await Producto.findByIdAndUpdate(p._id, p);
+        } else {
+            const nuevo = new Producto(p);
+            await nuevo.save();
+        }
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al guardar producto' });
+    }
+});
+
+// 3. Configuración
+app.get('/api/config', async (req, res) => {
+    try {
+        let config = await Config.findOne({ id: 'main' });
+        if (!config) {
+            config = { id: 'main', categorias: [], unidades: [], empresa: {}, bloquearRegistro: false };
+        } else if (config.bloquearRegistro === undefined) {
+            config.bloquearRegistro = false;
+        }
+        res.json(config);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener configuración' });
+    }
+});
+
+app.post('/api/config', async (req, res) => {
+    try {
+        await Config.findOneAndUpdate({ id: 'main' }, req.body, { upsert: true });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al guardar configuración' });
+    }
+});
+
+// 4. Usuarios / Login
+app.get('/api/usuarios', async (req, res) => {
+    try {
+        const users = await Usuario.find();
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener usuarios' });
+    }
+});
+
+app.post('/api/usuarios', async (req, res) => {
+    try {
+        const users = req.body;
+        if (!Array.isArray(users)) {
+            return res.status(400).json({ error: 'Formato de datos inválido' });
+        }
+        
+        // CORRECCIÓN ATÓMICA: 
+        // 1. Obtener la lista actual para rescatar al admin si fue borrado por error en el front
+        const currentUsers = await Usuario.find();
+        const adminUser = currentUsers.find(u => u.user === 'admin');
+        
+        // 2. Asegurarnos que el admin esté en la nueva lista
+        const hasAdmin = users.some(u => u.user === 'admin');
+        if (!hasAdmin && adminUser) {
+            users.push(adminUser);
+        }
+
+        // 3. Escribir la lista completa una sola vez (operación atómica)
+        // Sincronización masiva
+        await Usuario.deleteMany({});
+        await Usuario.insertMany(users);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving users:', error);
+        res.status(500).json({ error: 'Error al guardar usuarios' });
+    }
+});
+
+app.post('/api/register', async (req, res) => {
+    const { nombre, user, pass } = req.body;
+    try {
+        const config = await Config.findOne({ id: 'main' });
+        if (config && config.bloquearRegistro) {
+            return res.status(403).json({ error: 'El registro de nuevos usuarios está deshabilitado por el administrador.' });
+        }
+
+        const existe = await Usuario.findOne({ user });
+        if (existe) {
+            return res.status(400).json({ error: 'El nombre de usuario ya existe' });
+        }
+        const nuevo = new Usuario({ 
+            nombre, 
+            user, 
+            pass, 
+            rol: 'cliente',
+            canEditPrice: false,
+            permExcel: false, 
+            permPrint: false, 
+            permTicket: false, 
+            permWA: false, 
+            permDian: false 
+        });
+        await nuevo.save();
+        res.json({ success: true, user: nuevo });
+    } catch (error) {
+        console.error('Register Error:', error);
+        res.status(500).json({ error: 'Error al registrar usuario' });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    const { user, pass } = req.body;
+    try {
+        const cuenta = await Usuario.findOne({ user, pass });
+        if (cuenta) {
+            res.json({ success: true, user: cuenta });
+        } else {
+            res.status(401).json({ success: false, message: 'Usuario o clave incorrectos' });
+        }
+    } catch (error) {
+        console.error('Login Error:', error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+});
+app.delete('/api/productos/:id', async (req, res) => {
+    try {
+        await Producto.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar' });
+    }
+});
+
+// 6. Pedidos - Obtener todos
+app.get('/api/pedidos', async (req, res) => {
+    try {
+        const pedidos = await Pedido.find().sort({ id: -1 });
+        res.json(pedidos);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener pedidos' });
+    }
+});
+
+// 7. Pedidos - Guardar uno nuevo
+// Cola de procesamiento serializada para evitar condiciones de carrera en pedidos
+let queuePedidos = Promise.resolve();
+// CACHÉ DE MEMORIA RAM: Blindaje instantáneo para evitar doble procesamiento en la misma sesión
+const pedidosProcesadosEnSesion = new Set();
+
+app.post('/api/pedidos', async (req, res) => {
+    // BLOQUEO SÍNCRONO: Esperamos a que la cola de pedidos termine físicamente antes de responder
+    await (queuePedidos = queuePedidos.then(async () => {
+        const p = req.body;
+        try {
+            if (!p.id) {
+                if (!res.headersSent) res.status(400).json({ error: 'Pedido sin ID' });
+                return;
+            }
+            
+            // --- REGLA DE ORO: SEPARACIÓN FISCAL VS INVENTARIO (JERARQUÍA DE ÓRDENES) ---
+            // El servidor SOLO moverá stock si el cliente envía explícitamente moverStock: true.
+            if (p.moverStock !== true) {
+                p.inventarioDescontado = true; // Aseguramos que el flag se mantenga en disco
+                await Pedido.findOneAndUpdate({ id: p.id }, p, { upsert: true });
+                if (!res.headersSent) res.json({ success: true });
+                return;
+            }
+
+            // 1. VERIFICACIÓN DE PRIMER NIVEL: Memoria RAM (Idempotencia)
+            if (pedidosProcesadosEnSesion.has(p.id)) {
+                p.inventarioDescontado = true;
+                await Pedido.findOneAndUpdate({ id: p.id }, p, { upsert: true });
+                if (!res.headersSent) res.json({ success: true });
+                return;
+            }
+
+            // Marcamos el inicio del proceso para bloquear reintentos
+            pedidosProcesadosEnSesion.add(p.id);
+
+            // 2. VERIFICACIÓN DE SEGUNDO NIVEL: Disco Duro
+            const existeEnDisco = await Pedido.findOne({ id: p.id });
+            const yaDescontadoEnDisco = existeEnDisco && (existeEnDisco.inventarioDescontado === true || existeEnDisco.inventarioDescontado === "true");
+
+            if (!yaDescontadoEnDisco) {
+                if (p.items && Array.isArray(p.items)) {
+                    for (const item of p.items) {
+                        if (!item.referencia) continue;
+                        const cant = Number(item.cantidad) || 0;
+                        await Producto.findOneAndUpdate(
+                            { codigo: item.referencia },
+                            { $inc: { existencia: -cant } }
+                        );
+                    }
+                }
+                p.inventarioDescontado = true;
+            } else {
+                p.inventarioDescontado = true;
+            }
+
+            // 3. PERSISTENCIA FINAL
+            await Pedido.findOneAndUpdate({ id: p.id }, p, { upsert: true });
+            
+            if (!res.headersSent) res.json({ success: true });
+        } catch (error) {
+            console.error('Error saving order:', error);
+            if (!res.headersSent) res.status(500).json({ error: 'Error al guardar pedido' });
+        }
+    }).catch(e => {
+        console.error("Fallo crítico en la cola de pedidos:", e);
+        queuePedidos = Promise.resolve();
+        if (!res.headersSent) res.status(500).json({ error: "Fallo en el servidor" });
+    }));
+});
+
+app.delete('/api/pedidos/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const pedido = await Pedido.findOne({ id });
+        if (!pedido) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        // DEVOLVER EXISTENCIAS AL INVENTARIO (Solo si revert no es 'false')
+        const revertir = req.query.revert !== 'false';
+
+        if (revertir && pedido.items && Array.isArray(pedido.items)) {
+            for (const item of pedido.items) {
+                if (!item.referencia) continue;
+                const cant = Number(item.cantidad) || 0;
+                await Producto.findOneAndUpdate(
+                    { codigo: item.referencia },
+                    { $inc: { existencia: cant } }
+                );
+            }
+        }
+
+        await Pedido.findOneAndDelete({ id });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        res.status(500).json({ error: 'Error al eliminar pedido' });
+    }
+});
+
+app.post('/api/delete-all-pedidos', async (req, res) => {
+    try {
+        await Pedido.deleteMany({});
+        // NOTA: Esta acción NO reversa existencias, solo limpia el historial.
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al limpiar pedidos' });
+    }
+});
+
+// 8. Historial de Reportes
+app.get('/api/reportes', async (req, res) => {
+    try {
+        const reportes = await Reporte.find();
+        res.json(reportes);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener reportes' });
+    }
+});
+
+app.post('/api/reportes', async (req, res) => {
+    try {
+        const reportes = req.body;
+        if (Array.isArray(reportes)) {
+            await Reporte.deleteMany({});
+            await Reporte.insertMany(reportes);
+        } else {
+            // Caso de un solo reporte (upsert normal)
+            await Reporte.findOneAndUpdate({ idReporte: reportes.idReporte }, reportes, { upsert: true });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al guardar reportes' });
+    }
+});
+
+app.delete('/api/reportes/:id', async (req, res) => {
+    try {
+        await Reporte.findOneAndDelete({ idReporte: parseInt(req.params.id) });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar reporte' });
+    }
+});
+
+// 9. Ingresos
+app.get('/api/ingresos', async (req, res) => {
+    try {
+        const registros = await Ingreso.find();
+        res.json(registros);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener ingresos' });
+    }
+});
+
+app.post('/api/ingresos', async (req, res) => {
+    try {
+        const data = req.body;
+        if (Array.isArray(data)) {
+            // Sincronización masiva
+            await Ingreso.deleteMany({});
+            await Ingreso.insertMany(data);
+        } else if (data.id) {
+            await Ingreso.findOneAndUpdate({ id: data.id }, data, { upsert: true });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving ingresos:', error);
+        res.status(500).json({ error: 'Error al guardar ingresos' });
+    }
+});
+
+app.delete('/api/ingresos/:id', async (req, res) => {
+    try {
+        await Ingreso.findOneAndDelete({ id: parseInt(req.params.id) });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar ingreso' });
+    }
+});
+
+// 10. Egresos
+app.get('/api/egresos', async (req, res) => {
+    try {
+        const registros = await Egreso.find();
+        res.json(registros);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener egresos' });
+    }
+});
+
+app.post('/api/egresos', async (req, res) => {
+    try {
+        const data = req.body;
+        if (Array.isArray(data)) {
+            // Sincronización masiva atómica (Mongoose form)
+            await Egreso.deleteMany({});
+            await Egreso.insertMany(data);
+        } else if (data.id) {
+            await Egreso.findOneAndUpdate({ id: data.id }, data, { upsert: true });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving egresos:', error);
+        res.status(500).json({ error: 'Error al guardar egresos' });
+    }
+});
+
+app.delete('/api/egresos/:id', async (req, res) => {
+    try {
+        await Egreso.findOneAndDelete({ id: parseInt(req.params.id) });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar egreso' });
+    }
+});
+
+// 11. Reiniciar Sistema (Borrado de Transacciones y Stock a 0)
+app.post('/api/reset-system', async (req, res) => {
+    try {
+        // RESETEAR STOCK A 0 (No eliminar productos)
+        await Producto.updateMany({}, { $set: { existencia: 0 } });
+        
+        // ELIMINAR TRANSACCIONES
+        await Pedido.deleteMany({});
+        await Ingreso.deleteMany({});
+        await Egreso.deleteMany({});
+        
+        // NOTA: reportes, usuarios y configuracion se mantienen intactos
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Reset system error:', error);
+        res.status(500).json({ error: 'Error al reiniciar sistema' });
+    }
+});
+
+// 12. Vaciar Todos los Productos (Borrado Total de la Colección)
+app.post('/api/delete-all-products', async (req, res) => {
+    try {
+        await Producto.deleteMany({});
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete all products error:', error);
+        res.status(500).json({ error: 'Error al vaciar productos' });
+    }
+});
+
+
+// --- FIN MÓDULO COMPRAS ---
+
+// Redirigir la raíz al login y servir archivos estáticos (AL FINAL!)
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+app.use(express.static(path.join(__dirname)));
+
+// Iniciamos el servidor
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+});
