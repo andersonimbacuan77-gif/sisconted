@@ -1560,8 +1560,9 @@
                 const { headerHtml, logoBase64 } = await obtenerHeaderEmpresa(20);
 
                 // Datos del Usuario Logueado para el pie de cada sección
-                const adminNom = localStorage.getItem('adminLogueado') || localStorage.getItem('nombreCliente') || localStorage.getItem('userLogin') || 'USUARIO';
-                const adminDoc = localStorage.getItem('adminDocumento') || '---';
+                const adminNom = localStorage.getItem('adminLogueado') || localStorage.getItem('nombreCliente') || 'ADMINISTRADOR';
+                const adminDoc = localStorage.getItem('adminDocumento');
+                const adminDocStr = adminDoc ? ` Cc. ${adminDoc}` : '';
 
                 let tablaHtml = `<table border="1">${headerHtml}`;
 
@@ -1660,7 +1661,7 @@
                         </tr>
                         <tr style="height:25px;">
                             <td colspan="4" style="border: 1px solid #cbd5e1; padding-left: 10px; font-size: 11px; font-weight: 600; color: #334155;">
-                                ${adminNom.toUpperCase()} Cc.${adminDoc}
+                                ${adminNom.toUpperCase()}${adminDocStr}
                             </td>
                             <td colspan="16" style="border:none;"></td>
                         </tr>
