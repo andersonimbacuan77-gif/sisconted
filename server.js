@@ -46,14 +46,14 @@ app.post('/api/facturas-compras', async (req, res) => {
     const f = req.body;
     try {
         if (!f.id) f.id = Date.now().toString();
-        await FacturaCompra.findOneAndUpdate({ id: f.id }, f, { upsert: true });
+        const { _id, ...fields } = f;
+        await FacturaCompra.findOneAndUpdate({ id: f.id }, { $set: fields }, { upsert: true, new: true });
         if (f.proveedor && f.nit) {
             const nombreNormalizado = f.proveedor.trim().toUpperCase();
             const provExistente = await ProveedorCompra.findOne({ nombre: nombreNormalizado });
             if (!provExistente) {
                 await ProveedorCompra.findOneAndUpdate({ nombre: nombreNormalizado }, {
-                    nombre: nombreNormalizado,
-                    nit: f.nit.trim()
+                    $set: { nombre: nombreNormalizado, nit: f.nit.trim() }
                 }, { upsert: true });
             } else if (provExistente.nit !== f.nit.trim()) {
                 await ProveedorCompra.findOneAndUpdate({ nombre: nombreNormalizado }, { $set: { nit: f.nit.trim() } });
@@ -160,10 +160,12 @@ app.get('/api/config', async (req, res) => {
 
 app.post('/api/config', async (req, res) => {
     try {
-        await Config.findOneAndUpdate({ id: 'main' }, req.body, { upsert: true });
+        const { _id, ...fields } = req.body;
+        await Config.findOneAndUpdate({ id: 'main' }, { $set: fields }, { upsert: true, new: true });
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'Error al guardar configuración' });
+        console.error('Error saving config:', error);
+        res.status(500).json({ error: 'Error al guardar configuración: ' + error.message });
     }
 });
 
@@ -184,25 +186,27 @@ app.post('/api/usuarios', async (req, res) => {
             return res.status(400).json({ error: 'Formato de datos inválido' });
         }
         
-        // CORRECCIÓN ATÓMICA: 
-        // 1. Obtener la lista actual para rescatar al admin si fue borrado por error en el front
-        const currentUsers = await Usuario.find();
-        const adminUser = currentUsers.find(u => u.user === 'admin');
-        
-        // 2. Asegurarnos que el admin esté en la nueva lista
-        const hasAdmin = users.some(u => u.user === 'admin');
-        if (!hasAdmin && adminUser) {
-            users.push(adminUser);
+        // Asegurarnos de que el admin siempre exista
+        const adminEnLista = users.some(u => u.user === 'admin');
+        if (!adminEnLista) {
+            const adminActual = await Usuario.findOne({ user: 'admin' });
+            if (adminActual) users.push(adminActual.toObject());
         }
 
-        // 3. Escribir la lista completa una sola vez (operación atómica)
-        // Sincronización masiva
-        await Usuario.deleteMany({});
-        await Usuario.insertMany(users);
+        // Upsert por 'user' (nombre de usuario) - seguro y sin colisión de _id
+        for (const u of users) {
+            const { _id, ...fields } = u;
+            await Usuario.findOneAndUpdate({ user: u.user }, { $set: fields }, { upsert: true, new: true });
+        }
+
+        // Eliminar usuarios que ya no están en la lista (sincronización completa)
+        const usernames = users.map(u => u.user);
+        await Usuario.deleteMany({ user: { $nin: usernames } });
+
         res.json({ success: true });
     } catch (error) {
         console.error('Error saving users:', error);
-        res.status(500).json({ error: 'Error al guardar usuarios' });
+        res.status(500).json({ error: 'Error al guardar usuarios: ' + error.message });
     }
 });
 
@@ -254,10 +258,16 @@ app.post('/api/login', async (req, res) => {
 });
 app.delete('/api/productos/:id', async (req, res) => {
     try {
-        await Producto.findByIdAndDelete(req.params.id);
+        // El frontend envía el 'codigo' del producto como param, no el _id de MongoDB
+        const result = await Producto.findOneAndDelete({ codigo: req.params.id });
+        if (!result) {
+            // Fallback: intentar por _id por si acaso
+            await Producto.findByIdAndDelete(req.params.id);
+        }
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar' });
+        console.error('Error deleting producto:', error);
+        res.status(500).json({ error: 'Error al eliminar producto: ' + error.message });
     }
 });
 
