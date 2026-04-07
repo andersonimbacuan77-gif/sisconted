@@ -122,18 +122,24 @@ app.get('/api/productos', async (req, res) => {
     }
 });
 
-// 2. Productos - Guardar/Actualizar
+// 2. Productos - Guardar/Actualizar (soporta objeto único O array completo)
 app.post('/api/productos', async (req, res) => {
-    const p = req.body;
+    const data = req.body;
     try {
-        if (p._id) {
-            await Producto.findByIdAndUpdate(p._id, p);
+        if (Array.isArray(data)) {
+            // Sincronización masiva: upsert por código para evitar colisiones de _id
+            for (const p of data) {
+                const filter = p.codigo ? { codigo: p.codigo } : { _id: p._id || Date.now().toString() };
+                await Producto.findOneAndUpdate(filter, p, { upsert: true, new: true });
+            }
         } else {
-            const nuevo = new Producto(p);
-            await nuevo.save();
+            // Guardar/actualizar un solo producto
+            const filter = data.codigo ? { codigo: data.codigo } : { _id: data._id || Date.now().toString() };
+            await Producto.findOneAndUpdate(filter, data, { upsert: true, new: true });
         }
         res.json({ success: true });
     } catch (error) {
+        console.error('Error saving producto:', error);
         res.status(500).json({ error: 'Error al guardar producto' });
     }
 });
@@ -391,14 +397,18 @@ app.post('/api/reportes', async (req, res) => {
     try {
         const reportes = req.body;
         if (Array.isArray(reportes)) {
-            await Reporte.deleteMany({});
-            await Reporte.insertMany(reportes);
+            // Upsert por idReporte para evitar colisiones de _id de Mongoose
+            for (const r of reportes) {
+                if (!r.idReporte) continue;
+                await Reporte.findOneAndUpdate({ idReporte: r.idReporte }, r, { upsert: true, new: true });
+            }
         } else {
             // Caso de un solo reporte (upsert normal)
-            await Reporte.findOneAndUpdate({ idReporte: reportes.idReporte }, reportes, { upsert: true });
+            await Reporte.findOneAndUpdate({ idReporte: reportes.idReporte }, reportes, { upsert: true, new: true });
         }
         res.json({ success: true });
     } catch (error) {
+        console.error('Error saving reportes:', error);
         res.status(500).json({ error: 'Error al guardar reportes' });
     }
 });
@@ -426,11 +436,13 @@ app.post('/api/ingresos', async (req, res) => {
     try {
         const data = req.body;
         if (Array.isArray(data)) {
-            // Sincronización masiva
-            await Ingreso.deleteMany({});
-            await Ingreso.insertMany(data);
+            // Upsert por ID numérico para evitar colisiones de _id de Mongoose
+            for (const item of data) {
+                if (!item.id) continue;
+                await Ingreso.findOneAndUpdate({ id: item.id }, item, { upsert: true, new: true });
+            }
         } else if (data.id) {
-            await Ingreso.findOneAndUpdate({ id: data.id }, data, { upsert: true });
+            await Ingreso.findOneAndUpdate({ id: data.id }, data, { upsert: true, new: true });
         }
         res.json({ success: true });
     } catch (error) {
@@ -462,11 +474,13 @@ app.post('/api/egresos', async (req, res) => {
     try {
         const data = req.body;
         if (Array.isArray(data)) {
-            // Sincronización masiva atómica (Mongoose form)
-            await Egreso.deleteMany({});
-            await Egreso.insertMany(data);
+            // Upsert por ID numérico para evitar colisiones de _id de Mongoose
+            for (const item of data) {
+                if (!item.id) continue;
+                await Egreso.findOneAndUpdate({ id: item.id }, item, { upsert: true, new: true });
+            }
         } else if (data.id) {
-            await Egreso.findOneAndUpdate({ id: data.id }, data, { upsert: true });
+            await Egreso.findOneAndUpdate({ id: data.id }, data, { upsert: true, new: true });
         }
         res.json({ success: true });
     } catch (error) {
