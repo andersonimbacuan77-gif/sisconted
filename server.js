@@ -258,11 +258,12 @@ app.post('/api/login', async (req, res) => {
 });
 app.delete('/api/productos/:id', async (req, res) => {
     try {
-        // El frontend envía el 'codigo' del producto como param, no el _id de MongoDB
-        const result = await Producto.findOneAndDelete({ codigo: req.params.id });
+        const idParam = req.params.id;
+        // Intentar por _id primero (lo que envía el frontend: timestamp string de MongoDB)
+        let result = await Producto.findByIdAndDelete(idParam);
         if (!result) {
-            // Fallback: intentar por _id por si acaso
-            await Producto.findByIdAndDelete(req.params.id);
+            // Fallback: buscar por codigo por si acaso
+            result = await Producto.findOneAndDelete({ codigo: idParam });
         }
         res.json({ success: true });
     } catch (error) {
