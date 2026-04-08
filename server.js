@@ -544,6 +544,133 @@ app.post('/api/delete-all-products', async (req, res) => {
 
 // --- FIN MÓDULO COMPRAS ---
 
+// 13. PANEL DE RESPALDO - Listar colecciones disponibles
+app.get('/api/backup/colecciones', (req, res) => {
+    const colecciones = [
+        { id: 'productos',        nombre: 'Productos',               icono: '📦', descripcion: 'Catálogo completo de productos e inventario' },
+        { id: 'pedidos',          nombre: 'Pedidos / Ventas',        icono: '🧾', descripcion: 'Historial de órdenes y ventas realizadas' },
+        { id: 'ingresos',         nombre: 'Ingresos (Entradas)',      icono: '📥', descripcion: 'Registros de entradas de mercancía' },
+        { id: 'egresos',          nombre: 'Egresos (Salidas)',        icono: '📤', descripcion: 'Registros de salidas de mercancía' },
+        { id: 'reportes',         nombre: 'Reportes de Caja',        icono: '📊', descripcion: 'Historial de cierres de caja y reportes' },
+        { id: 'usuarios',         nombre: 'Usuarios del Sistema',    icono: '👥', descripcion: 'Cuentas y permisos de los usuarios' },
+        { id: 'config',           nombre: 'Configuración General',   icono: '⚙️',  descripcion: 'Categorías, unidades y datos de la empresa' },
+        { id: 'facturas_compras', nombre: 'Facturas de Compra',      icono: '🧾', descripcion: 'Facturas electrónicas de compra registradas' },
+        { id: 'proveedores',      nombre: 'Proveedores',             icono: '🏭', descripcion: 'Directorio de proveedores registrados' },
+    ];
+    res.json(colecciones);
+});
+
+// 14. PANEL DE RESPALDO - Descargar una colección como JSON
+app.get('/api/backup/:coleccion', async (req, res) => {
+    const { coleccion } = req.params;
+    try {
+        let data;
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        let filename = `backup_${coleccion}_${ts}.json`;
+
+        switch (coleccion) {
+            case 'productos':        data = await Producto.find();       break;
+            case 'pedidos':          data = await Pedido.find();         break;
+            case 'ingresos':         data = await Ingreso.find();        break;
+            case 'egresos':          data = await Egreso.find();         break;
+            case 'reportes':         data = await Reporte.find();        break;
+            case 'usuarios':         data = await Usuario.find();        break;
+            case 'config':           data = await Config.find();         break;
+            case 'facturas_compras': data = await FacturaCompra.find();  break;
+            case 'proveedores':      data = await ProveedorCompra.find(); break;
+            default:
+                return res.status(404).json({ error: `Colección '${coleccion}' no encontrada.` });
+        }
+
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('Error en backup:', error);
+        res.status(500).json({ error: 'Error al generar el respaldo: ' + error.message });
+    }
+});
+
+// 15. PANEL DE RESPALDO - Importar datos (Upsert masivo)
+app.post('/api/restore/:coleccion', async (req, res) => {
+    const { coleccion } = req.params;
+    const data = req.body;
+
+    if (!Array.isArray(data)) {
+        return res.status(400).json({ error: 'El formato de importación debe ser un Array de objetos JSON.' });
+    }
+
+    try {
+        let Model;
+        let queryField = '_id'; // Campo por defecto para buscar duplicados
+
+        switch (coleccion) {
+            case 'productos':        Model = Producto;        queryField = 'codigo'; break;
+            case 'pedidos':          Model = Pedido;          queryField = 'id'; break;
+            case 'ingresos':         Model = Ingreso;         queryField = 'id'; break;
+            case 'egresos':          Model = Egreso;          queryField = 'id'; break;
+            case 'reportes':         Model = Reporte;         queryField = 'idReporte'; break;
+            case 'usuarios':         Model = Usuario;         queryField = 'user'; break;
+            case 'config':           Model = Config;          queryField = 'id'; break;
+            case 'facturas_compras': Model = FacturaCompra;   queryField = 'id'; break;
+            case 'proveedores':      Model = ProveedorCompra; queryField = 'nombre'; break;
+            default: return res.status(404).json({ error: 'Colección no válida.' });
+        }
+
+        // Procesamiento masivo por Upsert
+        for (const item of data) {
+            const { _id, ...fields } = item;
+            const filter = {};
+            
+            // Si el item tiene el campo de consulta, lo usamos, si no usamos el _id si viene
+            if (item[queryField]) {
+                filter[queryField] = item[queryField];
+            } else if (_id) {
+                filter._id = _id;
+            } else {
+                // Si no hay forma de identificarlo, dejamos que se cree como nuevo con ID propio
+                filter._id = Date.now().toString() + Math.random(); 
+            }
+
+            await Model.findOneAndUpdate(filter, { $set: fields }, { upsert: true, new: true });
+        }
+
+        res.json({ success: true, count: data.length });
+    } catch (error) {
+        console.error('Error en restore:', error);
+        res.status(500).json({ error: 'Fallo al importar datos: ' + error.message });
+    }
+});
+
+// 16. PANEL DE RESPALDO - Vaciar tabla
+app.delete('/api/clear/:coleccion', async (req, res) => {
+    const { coleccion } = req.params;
+
+    if (coleccion === 'usuarios') {
+        return res.status(403).json({ error: 'Por seguridad, la tabla de usuarios no puede ser vaciada colectivamente.' });
+    }
+
+    try {
+        let Model;
+        switch (coleccion) {
+            case 'productos':        Model = Producto; break;
+            case 'pedidos':          Model = Pedido; break;
+            case 'ingresos':         Model = Ingreso; break;
+            case 'egresos':          Model = Egreso; break;
+            case 'reportes':         Model = Reporte; break;
+            case 'config':           Model = Config; break;
+            case 'facturas_compras': Model = FacturaCompra; break;
+            case 'proveedores':      Model = ProveedorCompra; break;
+            default: return res.status(404).json({ error: 'Colección no válida.' });
+        }
+
+        await Model.deleteMany({});
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al vaciar la tabla: ' + error.message });
+    }
+});
+
 // Redirigir la raíz al login
 app.get('/', (req, res) => {
     res.redirect('/login.html');

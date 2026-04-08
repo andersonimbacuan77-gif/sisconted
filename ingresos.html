@@ -1559,8 +1559,14 @@
 
                 const { headerHtml, logoBase64 } = await obtenerHeaderEmpresa(20);
 
-                // Datos del Usuario Logueado para el pie de cada sección
-                const adminNom = localStorage.getItem('adminLogueado') || localStorage.getItem('nombreCliente') || 'ADMINISTRADOR';
+                // Datos del Usuario Logueado: leer desde la API para obtener el nombre actualizado
+                const userLoginKey = localStorage.getItem('userLogin') || 'admin';
+                let adminNom = localStorage.getItem('adminLogueado') || localStorage.getItem('nombreCliente') || 'ADMINISTRADOR';
+                try {
+                    const usuarios = await API.getUsuarios();
+                    const usuarioActual = usuarios.find(u => u.user === userLoginKey);
+                    if (usuarioActual && usuarioActual.nombre) adminNom = usuarioActual.nombre;
+                } catch(e) { /* Usar valor de localStorage como fallback */ }
                 const adminDoc = localStorage.getItem('adminDocumento');
                 const adminDocStr = adminDoc ? ` Cc. ${adminDoc}` : '';
 

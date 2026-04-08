@@ -319,6 +319,250 @@
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
+        /* ===== PANEL DE RESPALDO ===== */
+        .btn-backup-open {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 18px 24px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(14, 165, 233, 0.08));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 16px;
+            color: var(--success);
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+        .btn-backup-open:hover {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(14, 165, 233, 0.15));
+            border-color: var(--success);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+        }
+        .btn-backup-open:active { transform: scale(0.97); }
+
+        .backup-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+        .backup-modal-overlay.show { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .backup-modal {
+            background: #111827;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 24px;
+            padding: 36px;
+            width: 100%;
+            max-width: 680px;
+            max-height: 88vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(16,185,129,0.1);
+        }
+
+        .backup-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 28px;
+        }
+        .backup-modal-header h2 {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: var(--success);
+            letter-spacing: 2px;
+        }
+        .backup-modal-header p {
+            margin: 6px 0 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .btn-close-backup {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-close-backup:hover { background: var(--danger); color: white; border-color: var(--danger); }
+
+        .backup-collection-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 10px;
+            transition: all 0.25s ease;
+            gap: 16px;
+        }
+        .backup-collection-card:hover {
+            border-color: rgba(16,185,129,0.3);
+            background: rgba(16, 185, 129, 0.04);
+            transform: translateX(4px);
+        }
+        .backup-col-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex: 1;
+        }
+        .backup-col-icon {
+            font-size: 1.8rem;
+            width: 44px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .backup-col-name {
+            font-weight: 700;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        .backup-col-desc {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            margin-top: 3px;
+        }
+        .btn-download-col {
+            background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(14,165,233,0.1));
+            border: 1px solid rgba(16,185,129,0.3);
+            color: var(--success);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+        .btn-download-col:hover {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+            box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+            transform: scale(1.05);
+        }
+        .btn-download-col:active { transform: scale(0.96); }
+        .btn-download-col.loading {
+            opacity: 0.6;
+            pointer-events: none;
+            cursor: default;
+        }
+        .btn-download-all {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(14,165,233,0.1));
+            border: 1px solid rgba(99,102,241,0.3);
+            color: var(--primary-light);
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 18px;
+            transition: all 0.25s ease;
+            font-family: inherit;
+        }
+        .btn-download-all:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 8px 20px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        /* Botones de acción específicos */
+        .btn-import-col {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(56, 189, 248, 0.1));
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            color: var(--accent);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+        .btn-import-col:hover {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+            transform: scale(1.05);
+        }
+
+        .btn-clear-col {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1));
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+        .btn-clear-col:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            transform: scale(1.05);
+        }
+
+        .backup-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         @media (max-width: 768px) {
             body { flex-direction: column; overflow-y: auto; height: auto; }
             .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 20px; box-sizing: border-box; }
@@ -519,6 +763,39 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- TARJETA DE RESPALDO DE BASE DE DATOS -->
+        <div class="section-card" style="border-color: rgba(16, 185, 129, 0.2);">
+            <h2 style="color: var(--success);">💾 Respaldo de Base de Datos</h2>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 20px;">Descarga una copia de seguridad JSON de cualquier tabla almacenada en el sistema. Los archivos incluyen todos los registros actuales y reciben el nombre con la fecha exacta de descarga.</p>
+            <button class="btn-backup-open" onclick="abrirPanelBackup()">
+                <span style="font-size: 1.4rem;">🗄️</span>
+                <span>Ver Tablas y Descargar Respaldo</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE RESPALDO -->
+    <div class="backup-modal-overlay" id="modalBackup">
+        <div class="backup-modal">
+            <div class="backup-modal-header">
+                <div>
+                    <h2>💾 Copias de Seguridad</h2>
+                    <p>Selecciona una colección para descargar su respaldo en formato JSON</p>
+                </div>
+                <button class="btn-close-backup" onclick="cerrarPanelBackup()">✕</button>
+            </div>
+            <div id="backup-colecciones-lista">
+                <p style="text-align:center; color:var(--text-muted); padding: 40px 0;">⏳ Cargando colecciones...</p>
+            </div>
+            <!-- Input oculto para importación -->
+            <input type="file" id="import-json-input" accept=".json" style="display:none;" onchange="importarDatosJSON(event)">
+            
+            <button class="btn-download-all" onclick="descargarTodoElBackup()">
+                📦 Descargar Todas las Tablas (ZIP Completo)
+            </button>
         </div>
     </div>
 
@@ -899,6 +1176,175 @@
                 console.error(e);
                 alert("No se pudo eliminar el usuario: " + e.message + "\nVerifique la conexión con el servidor.");
                 cargarUsuarios(); // Recargar estado real del servidor
+            }
+        }
+
+        // ===== PANEL DE RESPALDO =====
+        let coleccionesBackup = [];
+
+        async function abrirPanelBackup() {
+            document.getElementById('modalBackup').classList.add('show');
+            await cargarColeccionesBackup();
+        }
+
+        function cerrarPanelBackup() {
+            document.getElementById('modalBackup').classList.remove('show');
+        }
+
+        // Cerrar al hacer clic en el fondo oscuro del overlay
+        document.getElementById('modalBackup').addEventListener('click', function(e) {
+            if (e.target === this) cerrarPanelBackup();
+        });
+
+        async function cargarColeccionesBackup() {
+            const lista = document.getElementById('backup-colecciones-lista');
+            lista.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 30px 0;">⏳ Cargando...</p>';
+            try {
+                coleccionesBackup = await apiRequest('/api/backup/colecciones');
+                lista.innerHTML = coleccionesBackup.map(col => `
+                    <div class="backup-collection-card" id="card-${col.id}">
+                        <div class="backup-col-info">
+                            <div class="backup-col-icon">${col.icono}</div>
+                            <div style="flex:1;">
+                                <div class="backup-col-name">${col.nombre}</div>
+                                <div class="backup-col-desc">${col.descripcion}</div>
+                            </div>
+                        </div>
+                        <div class="backup-actions">
+                            <button class="btn-download-col" id="btn-dl-${col.id}" title="Descargar Copia JSON" onclick="descargarColeccion('${col.id}', '${col.nombre}')">
+                                ⬇️
+                            </button>
+                            <button class="btn-import-col" id="btn-up-${col.id}" title="Subir / Importar JSON" onclick="seleccionarArchivoJSON('${col.id}')">
+                                📤
+                            </button>
+                            ${col.id !== 'usuarios' ? `
+                                <button class="btn-clear-col" id="btn-cl-${col.id}" title="Vaciar Tabla" onclick="vaciarColeccion('${col.id}', '${col.nombre}')">
+                                    🗑️
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) {
+                lista.innerHTML = `<p style="text-align:center; color:var(--danger); padding:30px 0;">❌ Error al cargar colecciones: ${e.message}</p>`;
+            }
+        }
+
+        // --- LÓGICA DE IMPORTACIÓN ---
+        let coleccionSeleccionada = null;
+
+        function seleccionarArchivoJSON(id) {
+            coleccionSeleccionada = id;
+            document.getElementById('import-json-input').click();
+        }
+
+        async function importarDatosJSON(event) {
+            const file = event.target.files[0];
+            if (!file || !coleccionSeleccionada) return;
+
+            const btn = document.getElementById(`btn-up-${coleccionSeleccionada}`);
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = '⏳';
+                const content = await file.text();
+                const data = JSON.parse(content);
+
+                if (!confirm(`¿Estás seguro de importar ${data.length || 0} registros en "${coleccionSeleccionada}"?\nLos datos existentes con el mismo ID se actualizarán.`)) {
+                    btn.innerHTML = originalText;
+                    event.target.value = '';
+                    return;
+                }
+
+                const res = await API.restoreColeccion(coleccionSeleccionada, data);
+                if (res.success) {
+                    alert(`✅ Éxito: Se han procesado ${res.count} registros en "${coleccionSeleccionada}".`);
+                    btn.innerHTML = '✅';
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error al importar archivo: " + e.message);
+                btn.innerHTML = '❌';
+            } finally {
+                event.target.value = '';
+                setTimeout(() => { btn.innerHTML = originalText; }, 3000);
+            }
+        }
+
+        // --- LÓGICA DE VACIADO ---
+        async function vaciarColeccion(id, nombre) {
+            if (id === 'usuarios') return; // Blindaje extra
+
+            const msj = `⚠️ ¡PELIGRO! Vas a eliminar TODOS los registros de la tabla "${nombre}".\nEsta acción no se puede deshacer.\n\n¿Estás completamente seguro?`;
+            if (!confirm(msj)) return;
+            
+            const confirm2 = confirm(`ÚLTIMA ADVERTENCIA:\n¿Realmente deseas dejar la tabla "${nombre}" totalmente VACÍA?`);
+            if (!confirm2) return;
+
+            const btn = document.getElementById(`btn-cl-${id}`);
+            const originalText = btn.innerHTML;
+
+            try {
+                btn.innerHTML = '⏳';
+                const res = await API.clearColeccion(id);
+                if (res.success) {
+                    alert(`🗑️ La tabla "${nombre}" ha sido vaciada correctamente.`);
+                    btn.innerHTML = '✅';
+                }
+            } catch (e) {
+                alert("Error al vaciar tabla: " + e.message);
+                btn.innerHTML = '❌';
+            } finally {
+                setTimeout(() => { btn.innerHTML = originalText; }, 3000);
+            }
+        }
+
+        async function descargarColeccion(id, nombre) {
+            const btn = document.getElementById(`btn-dl-${id}`);
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳';
+            btn.classList.add('loading');
+            try {
+                // Usamos fetch para obtener el JSON y forzar descarga desde el cliente
+                const resp = await fetch(`${API_URL}/api/backup/${id}`);
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.error || `Error ${resp.status}`);
+                }
+                const blob = await resp.blob();
+                const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const filename = `backup_${id}_${ts}.json`;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+                btn.innerHTML = '✅';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('loading');
+                }, 2500);
+            } catch(e) {
+                btn.innerHTML = '❌';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('loading');
+                }, 2500);
+                alert('Error al descargar "' + nombre + '": ' + e.message);
+            }
+        }
+
+        async function descargarTodoElBackup() {
+            if (!coleccionesBackup || coleccionesBackup.length === 0) {
+                await cargarColeccionesBackup();
+            }
+            if (coleccionesBackup.length === 0) return alert('No hay colecciones para descargar.');
+            if (!confirm(`¿Descargar las ${coleccionesBackup.length} colecciones individualmente?\nSe descargará un archivo JSON por cada tabla.`)) return;
+            for (let i = 0; i < coleccionesBackup.length; i++) {
+                const col = coleccionesBackup[i];
+                await new Promise(r => setTimeout(r, 600 * i)); // Evitar bloqueo del navegador
+                descargarColeccion(col.id, col.nombre);
             }
         }
 

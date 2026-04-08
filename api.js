@@ -97,6 +97,9 @@ const API = {
     resetSystem: () => apiRequest('/api/reset-system', 'POST'),
     deleteAllProducts: () => apiRequest('/api/delete-all-products', 'POST'),
 
+    restoreColeccion: (id, data) => apiRequest(`/api/restore/${id}`, 'POST', data),
+    clearColeccion: (id) => apiRequest(`/api/clear/${id}`, 'DELETE'),
+
     getFechaLocal: (timestamp = null) => {
         const d = timestamp ? new Date(timestamp) : new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
